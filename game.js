@@ -338,21 +338,15 @@
       var newX = Math.max(bounds.left, Math.min(bounds.right, player.x + moveX));
       var newY = Math.max(bounds.top, Math.min(bounds.bottom, player.y + moveY));
 
-      var appliedX = newX - player.x;
-      var appliedY = newY - player.y;
-
-      // The portion of the attempted move the boundary refused to let
-      // through. The character stands still against the wall, but the
-      // background keeps scrolling by that blocked amount so it still
-      // reads as movement.
-      var blockedX = moveX - appliedX;
-      var blockedY = moveY - appliedY;
-
       player.x = newX;
       player.y = newY;
 
-      worldCol = Math.max(0, Math.min(WORLD_SIZE - 1, worldCol + (blockedX * 0.5) / GRID_SPACING));
-      worldRow = Math.max(0, Math.min(WORLD_SIZE - 1, worldRow + (blockedY * 0.5) / GRID_SPACING));
+      // The world coordinate tracks the full attempted move, not just the
+      // part the sprite was allowed to take on screen. So it advances the
+      // same amount whether the character is walking freely inside the box
+      // or standing pinned against the wall still pushing into it.
+      worldCol = Math.max(0, Math.min(WORLD_SIZE - 1, worldCol + (moveX * 0.5) / GRID_SPACING));
+      worldRow = Math.max(0, Math.min(WORLD_SIZE - 1, worldRow + (moveY * 0.5) / GRID_SPACING));
     }
   }
 
