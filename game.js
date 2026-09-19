@@ -30,7 +30,7 @@
     angle: -Math.PI / 2, // facing up
     speed: 0 // current speed, 0..maxSpeed
   };
-  var MAX_SPEED = 260; // px per second
+  var MAX_SPEED = 210; // px per second
 
   function resetPlayerPosition() {
     player.x = width / 2;
