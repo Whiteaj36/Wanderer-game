@@ -137,10 +137,45 @@
   var worldCol = WORLD_CENTER;
   var worldRow = WORLD_CENTER;
 
+  // Loads a dense 2D grid (see worlds/forest.json) as the world array. The
+  // grid's one "player" cell sets the spawn point and is cleared back to
+  // empty, since the player is a moving actor, not a static tile.
+  function loadWorldFromGrid(grid) {
+    var size = grid.length;
+    var spawnCol = null;
+    var spawnRow = null;
+
+    for (var r = 0; r < size; r++) {
+      for (var c = 0; c < grid[r].length; c++) {
+        if (grid[r][c] === "player") {
+          spawnCol = c;
+          spawnRow = r;
+          grid[r][c] = 0;
+        }
+      }
+    }
+
+    world = grid;
+    WORLD_SIZE = size;
+    worldCol = spawnCol !== null ? spawnCol : Math.floor(WORLD_SIZE / 2);
+    worldRow = spawnRow !== null ? spawnRow : Math.floor(WORLD_SIZE / 2);
+  }
+
+  function loadWorldFile(path) {
+    return fetch(path)
+      .then(function (res) {
+        if (!res.ok) throw new Error("world file not found: " + path);
+        return res.json();
+      })
+      .then(loadWorldFromGrid)
+      .catch(function () {
+        // Keep the default empty world, spawned at the middle cell.
+      });
+  }
+
   function drawBackground() {
     ctx.fillStyle = "#1b2430";
     ctx.fillRect(0, 0, width, height);
-    ctx.fillStyle = "rgba(255, 255, 255, 0.06)";
 
     var tilesX = width / GRID_SPACING;
     var tilesY = height / GRID_SPACING;
@@ -153,11 +188,32 @@
       var screenX = width / 2 + (col - worldCol) * GRID_SPACING;
       for (var row = firstRow; row <= lastRow; row++) {
         var screenY = height / 2 + (row - worldRow) * GRID_SPACING;
-        ctx.beginPath();
-        ctx.arc(screenX, screenY, 2, 0, Math.PI * 2);
-        ctx.fill();
+        var tile = world[row][col];
+
+        if (tile === "tree") {
+          drawTree(screenX, screenY);
+        } else {
+          ctx.beginPath();
+          ctx.fillStyle = "rgba(255, 255, 255, 0.06)";
+          ctx.arc(screenX, screenY, 2, 0, Math.PI * 2);
+          ctx.fill();
+        }
       }
     }
+  }
+
+  function drawTree(x, y) {
+    ctx.beginPath();
+    ctx.fillStyle = "#7a5230";
+    ctx.fillRect(x - 1.5, y - 1, 3, 6);
+
+    ctx.beginPath();
+    ctx.arc(x, y - 4, 5.5, 0, Math.PI * 2);
+    ctx.fillStyle = "#5fae74";
+    ctx.fill();
+    ctx.strokeStyle = "#3f7d52";
+    ctx.lineWidth = 1;
+    ctx.stroke();
   }
 
   function drawBoundary() {
@@ -314,8 +370,10 @@
     requestAnimationFrame(frame);
   }
 
-  requestAnimationFrame(function (t) {
-    lastTime = t;
-    requestAnimationFrame(frame);
+  loadWorldFile("worlds/forest.json").then(function () {
+    requestAnimationFrame(function (t) {
+      lastTime = t;
+      requestAnimationFrame(frame);
+    });
   });
 })();
