@@ -328,12 +328,26 @@
     };
   }
 
+  // True while the tile at (col, row) is a tree, blocking movement into it.
+  function isTreeAt(col, row) {
+    var r = Math.round(row);
+    var c = Math.round(col);
+    if (r < 0 || r >= WORLD_SIZE || c < 0 || c >= WORLD_SIZE) return false;
+    return world[r][c] === "tree";
+  }
+
   function update(dt) {
     if (drag.magnitude > 0) {
       player.angle = Math.atan2(drag.dirY, drag.dirX);
       var speed = MAX_SPEED * drag.magnitude;
       var moveX = drag.dirX * speed * dt;
       var moveY = drag.dirY * speed * dt;
+
+      // A tree blocks real movement through the world, on whichever axis
+      // walks into it, while the other axis can still carry the character
+      // past it.
+      if (isTreeAt(worldCol + moveX / GRID_SPACING, worldRow)) moveX = 0;
+      if (isTreeAt(worldCol, worldRow + moveY / GRID_SPACING)) moveY = 0;
 
       var bounds = getBoundary();
       var newX = Math.max(bounds.left, Math.min(bounds.right, player.x + moveX));
