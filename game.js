@@ -142,6 +142,17 @@
     }
   }
 
+  function drawBoundary() {
+    var halfW = width / 4;
+    var halfH = height / 4;
+    ctx.save();
+    ctx.strokeStyle = "rgba(255, 255, 255, 0.18)";
+    ctx.lineWidth = 2;
+    ctx.setLineDash([6, 8]);
+    ctx.strokeRect(width / 2 - halfW, height / 2 - halfH, halfW * 2, halfH * 2);
+    ctx.restore();
+  }
+
   // ---- Joystick visuals ----
   function drawJoystick() {
     if (!drag.active) return;
@@ -227,6 +238,21 @@
   // ---- Main loop ----
   var lastTime = performance.now();
 
+  // The boundary box extends half the distance from the center to each
+  // screen edge, so it spans the middle 50% of the screen in both axes.
+  function getBoundary() {
+    var halfW = width / 4;
+    var halfH = height / 4;
+    var cx = width / 2;
+    var cy = height / 2;
+    return {
+      left: cx - halfW + player.radius,
+      right: cx + halfW - player.radius,
+      top: cy - halfH + player.radius,
+      bottom: cy + halfH - player.radius
+    };
+  }
+
   function update(dt) {
     if (drag.magnitude > 0) {
       player.angle = Math.atan2(drag.dirY, drag.dirX);
@@ -234,16 +260,21 @@
       var moveX = drag.dirX * speed * dt;
       var moveY = drag.dirY * speed * dt;
 
-      player.x += moveX;
-      player.y += moveY;
+      var bounds = getBoundary();
+      var newX = Math.max(bounds.left, Math.min(bounds.right, player.x + moveX));
+      var newY = Math.max(bounds.top, Math.min(bounds.bottom, player.y + moveY));
 
-      // background scrolls with motion for a sense of a larger world
-      worldOffsetX += moveX * 0.5;
-      worldOffsetY += moveY * 0.5;
+      // Only the movement that actually clears the boundary counts, so the
+      // parallax and the character both stop dead against the wall instead
+      // of sliding past it.
+      var appliedX = newX - player.x;
+      var appliedY = newY - player.y;
 
-      // keep the player within the visible screen
-      player.x = Math.max(player.radius, Math.min(width - player.radius, player.x));
-      player.y = Math.max(player.radius, Math.min(height - player.radius, player.y));
+      player.x = newX;
+      player.y = newY;
+
+      worldOffsetX += appliedX * 0.5;
+      worldOffsetY += appliedY * 0.5;
     }
   }
 
@@ -254,6 +285,7 @@
     update(dt);
 
     drawBackground();
+    drawBoundary();
     drawJoystick();
     drawPlayer(dt);
 
