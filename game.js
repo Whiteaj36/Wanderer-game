@@ -264,17 +264,21 @@
       var newX = Math.max(bounds.left, Math.min(bounds.right, player.x + moveX));
       var newY = Math.max(bounds.top, Math.min(bounds.bottom, player.y + moveY));
 
-      // Only the movement that actually clears the boundary counts, so the
-      // parallax and the character both stop dead against the wall instead
-      // of sliding past it.
       var appliedX = newX - player.x;
       var appliedY = newY - player.y;
+
+      // The portion of the attempted move the boundary refused to let
+      // through. The character stands still against the wall, but the
+      // background keeps scrolling by that blocked amount so it still
+      // reads as movement.
+      var blockedX = moveX - appliedX;
+      var blockedY = moveY - appliedY;
 
       player.x = newX;
       player.y = newY;
 
-      worldOffsetX += appliedX * 0.5;
-      worldOffsetY += appliedY * 0.5;
+      worldOffsetX += blockedX * 0.5;
+      worldOffsetY += blockedY * 0.5;
     }
   }
 
