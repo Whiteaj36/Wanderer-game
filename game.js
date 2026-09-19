@@ -177,17 +177,18 @@
     ctx.fillStyle = "#1b2430";
     ctx.fillRect(0, 0, width, height);
 
-    var tilesX = width / GRID_SPACING;
-    var tilesY = height / GRID_SPACING;
-    var firstCol = Math.max(0, Math.floor(worldCol - tilesX / 2) - 1);
-    var lastCol = Math.min(WORLD_SIZE - 1, Math.ceil(worldCol + tilesX / 2) + 1);
-    var firstRow = Math.max(0, Math.floor(worldRow - tilesY / 2) - 1);
-    var lastRow = Math.min(WORLD_SIZE - 1, Math.ceil(worldRow + tilesY / 2) + 1);
+    // Tiles are anchored at the character's actual screen position, not an
+    // assumed box center, since the sprite doesn't always sit dead center
+    // in the boundary box.
+    var firstCol = Math.max(0, Math.floor(worldCol - player.x / GRID_SPACING) - 1);
+    var lastCol = Math.min(WORLD_SIZE - 1, Math.ceil(worldCol + (width - player.x) / GRID_SPACING) + 1);
+    var firstRow = Math.max(0, Math.floor(worldRow - player.y / GRID_SPACING) - 1);
+    var lastRow = Math.min(WORLD_SIZE - 1, Math.ceil(worldRow + (height - player.y) / GRID_SPACING) + 1);
 
     for (var col = firstCol; col <= lastCol; col++) {
-      var screenX = width / 2 + (col - worldCol) * GRID_SPACING;
+      var screenX = player.x + (col - worldCol) * GRID_SPACING;
       for (var row = firstRow; row <= lastRow; row++) {
-        var screenY = height / 2 + (row - worldRow) * GRID_SPACING;
+        var screenY = player.y + (row - worldRow) * GRID_SPACING;
         var tile = world[row][col];
 
         if (tile === "tree") {
@@ -341,12 +342,15 @@
       player.x = newX;
       player.y = newY;
 
-      // The world coordinate tracks the full attempted move, not just the
-      // part the sprite was allowed to take on screen. So it advances the
-      // same amount whether the character is walking freely inside the box
-      // or standing pinned against the wall still pushing into it.
-      worldCol = Math.max(0, Math.min(WORLD_SIZE - 1, worldCol + (moveX * 0.5) / GRID_SPACING));
-      worldRow = Math.max(0, Math.min(WORLD_SIZE - 1, worldRow + (moveY * 0.5) / GRID_SPACING));
+      // The world coordinate tracks the character's real position in the
+      // game world, so it advances with the full attempted move at the same
+      // rate as the sprite itself - not a fraction of it, and not gated on
+      // whether the boundary let the sprite move. Tiles are drawn relative
+      // to (player.x, player.y), so this keeps the tile under the sprite
+      // correct at every moment: static while the sprite is free to move
+      // with it, and sliding past once the sprite is pinned at the wall.
+      worldCol = Math.max(0, Math.min(WORLD_SIZE - 1, worldCol + moveX / GRID_SPACING));
+      worldRow = Math.max(0, Math.min(WORLD_SIZE - 1, worldRow + moveY / GRID_SPACING));
     }
   }
 
