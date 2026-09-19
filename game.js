@@ -51,8 +51,13 @@
     currentY: 0,
     dirX: 0,
     dirY: 0,
-    magnitude: 0 // 0..1
+    magnitude: 0, // 0..1
+    maxDist: 0, // largest distance reached this gesture, to tell a tap from a drag
+    startTime: 0
   };
+
+  var TAP_MAX_DIST = 10; // px
+  var TAP_MAX_DURATION = 350; // ms
 
   function hideHint() {
     if (!hint.classList.contains("hidden")) {
@@ -90,6 +95,8 @@
     drag.originY = e.clientY;
     drag.currentX = e.clientX;
     drag.currentY = e.clientY;
+    drag.maxDist = 0;
+    drag.startTime = performance.now();
     updateDragVector();
   }
 
@@ -97,6 +104,9 @@
     if (!drag.active || e.pointerId !== drag.pointerId) return;
     drag.currentX = e.clientX;
     drag.currentY = e.clientY;
+    var dx = drag.currentX - drag.originX;
+    var dy = drag.currentY - drag.originY;
+    drag.maxDist = Math.max(drag.maxDist, Math.sqrt(dx * dx + dy * dy));
     updateDragVector();
   }
 
@@ -107,6 +117,10 @@
     drag.dirX = 0;
     drag.dirY = 0;
     drag.magnitude = 0;
+
+    if (drag.maxDist < TAP_MAX_DIST && performance.now() - drag.startTime < TAP_MAX_DURATION) {
+      handleTap(e.clientX, e.clientY);
+    }
   }
 
   canvas.addEventListener("pointerdown", onPointerDown);
@@ -171,6 +185,56 @@
       .catch(function () {
         // Keep the default empty world, spawned at the middle cell.
       });
+  }
+
+  // ---- World persistence ----
+  var WORLD_STORAGE_KEY = "wanderer-world";
+
+  // Saves the live grid plus the character's current position (tagged back
+  // in as a "player" cell, the same marker a world file uses) so a reload
+  // resumes from here, using the same loader either way.
+  function saveWorldToStorage() {
+    try {
+      var snapshot = world.map(function (rowArr) {
+        return rowArr.slice();
+      });
+      var spawnRow = Math.round(worldRow);
+      var spawnCol = Math.round(worldCol);
+      if (snapshot[spawnRow] && snapshot[spawnRow][spawnCol] !== undefined) {
+        snapshot[spawnRow][spawnCol] = "player";
+      }
+      localStorage.setItem(WORLD_STORAGE_KEY, JSON.stringify(snapshot));
+    } catch (e) {
+      // Storage unavailable or full; the change still applies this session.
+    }
+  }
+
+  function loadWorldFromStorage() {
+    try {
+      var raw = localStorage.getItem(WORLD_STORAGE_KEY);
+      if (!raw) return false;
+      loadWorldFromGrid(JSON.parse(raw));
+      return true;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  // A tap (as opposed to a drag) on a tree within one tile of the character
+  // chops it down: it's removed from the grid and the change is persisted.
+  function handleTap(screenX, screenY) {
+    var tappedCol = Math.round(worldCol + (screenX - player.x) / GRID_SPACING);
+    var tappedRow = Math.round(worldRow + (screenY - player.y) / GRID_SPACING);
+    if (tappedRow < 0 || tappedRow >= WORLD_SIZE || tappedCol < 0 || tappedCol >= WORLD_SIZE) return;
+
+    var charCol = Math.round(worldCol);
+    var charRow = Math.round(worldRow);
+    var withinReach = Math.abs(tappedCol - charCol) <= 1 && Math.abs(tappedRow - charRow) <= 1;
+
+    if (withinReach && world[tappedRow][tappedCol] === "tree") {
+      world[tappedRow][tappedCol] = 0;
+      saveWorldToStorage();
+    }
   }
 
   function drawBackground() {
@@ -382,10 +446,16 @@
     requestAnimationFrame(frame);
   }
 
-  loadWorldFile("worlds/forest.json").then(function () {
+  function beginLoop() {
     requestAnimationFrame(function (t) {
       lastTime = t;
       requestAnimationFrame(frame);
     });
-  });
+  }
+
+  if (loadWorldFromStorage()) {
+    beginLoop();
+  } else {
+    loadWorldFile("worlds/forest.json").then(beginLoop);
+  }
 })();
