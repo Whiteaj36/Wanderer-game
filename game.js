@@ -237,9 +237,9 @@
       player.x += moveX;
       player.y += moveY;
 
-      // background scrolls opposite to motion for a sense of a larger world
-      worldOffsetX -= moveX * 0.5;
-      worldOffsetY -= moveY * 0.5;
+      // background scrolls with motion for a sense of a larger world
+      worldOffsetX += moveX * 0.5;
+      worldOffsetY += moveY * 0.5;
 
       // keep the player within the visible screen
       player.x = Math.max(player.radius, Math.min(width - player.radius, player.x));
