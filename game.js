@@ -120,23 +120,41 @@
     drag.magnitude = 0;
   });
 
-  // ---- Background (subtle wandering dot grid, gives sense of motion) ----
-  var GRID_SPACING = 60;
-  var worldOffsetX = 0;
-  var worldOffsetY = 0;
+  // ---- World coordinate system ----
+  // The world is a 500x500 grid of tiles tracked in a plain 2D array. The
+  // character's true position lives here (starting at the middle cell) and
+  // the background tiles are drawn by reading straight out of this grid,
+  // rather than from a free-floating pixel offset.
+  var GRID_SPACING = 60; // px per tile
+  var WORLD_SIZE = 500;
+  var WORLD_CENTER = Math.floor(WORLD_SIZE / 2);
+
+  var world = [];
+  for (var wr = 0; wr < WORLD_SIZE; wr++) {
+    world.push(new Array(WORLD_SIZE).fill(0));
+  }
+
+  var worldCol = WORLD_CENTER;
+  var worldRow = WORLD_CENTER;
 
   function drawBackground() {
     ctx.fillStyle = "#1b2430";
     ctx.fillRect(0, 0, width, height);
-
     ctx.fillStyle = "rgba(255, 255, 255, 0.06)";
-    var offX = ((worldOffsetX % GRID_SPACING) + GRID_SPACING) % GRID_SPACING;
-    var offY = ((worldOffsetY % GRID_SPACING) + GRID_SPACING) % GRID_SPACING;
 
-    for (var x = -offX; x < width + GRID_SPACING; x += GRID_SPACING) {
-      for (var y = -offY; y < height + GRID_SPACING; y += GRID_SPACING) {
+    var tilesX = width / GRID_SPACING;
+    var tilesY = height / GRID_SPACING;
+    var firstCol = Math.max(0, Math.floor(worldCol - tilesX / 2) - 1);
+    var lastCol = Math.min(WORLD_SIZE - 1, Math.ceil(worldCol + tilesX / 2) + 1);
+    var firstRow = Math.max(0, Math.floor(worldRow - tilesY / 2) - 1);
+    var lastRow = Math.min(WORLD_SIZE - 1, Math.ceil(worldRow + tilesY / 2) + 1);
+
+    for (var col = firstCol; col <= lastCol; col++) {
+      var screenX = width / 2 + (col - worldCol) * GRID_SPACING;
+      for (var row = firstRow; row <= lastRow; row++) {
+        var screenY = height / 2 + (row - worldRow) * GRID_SPACING;
         ctx.beginPath();
-        ctx.arc(x, y, 2, 0, Math.PI * 2);
+        ctx.arc(screenX, screenY, 2, 0, Math.PI * 2);
         ctx.fill();
       }
     }
@@ -277,8 +295,8 @@
       player.x = newX;
       player.y = newY;
 
-      worldOffsetX += blockedX * 0.5;
-      worldOffsetY += blockedY * 0.5;
+      worldCol = Math.max(0, Math.min(WORLD_SIZE - 1, worldCol + (blockedX * 0.5) / GRID_SPACING));
+      worldRow = Math.max(0, Math.min(WORLD_SIZE - 1, worldRow + (blockedY * 0.5) / GRID_SPACING));
     }
   }
 
